@@ -1,0 +1,27 @@
+# Match data — licensed for the competition only. NEVER commit.
+data/*
+!data/.gitkeep
+upstream/
+*.mp4
+*_atd.txt
+*_atd.xml
+*_homography.csv
+*_smart_tagging.xml
+*.pl3container
+
+# Submissions: keep only the final tracked file(s) explicitly
+submissions/*
+!submissions/.gitkeep
+!submissions/FINAL_*.csv
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+notebooks/**/outputs/
