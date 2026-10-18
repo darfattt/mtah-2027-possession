@@ -13,17 +13,20 @@ _IDX = {lab: i for i, lab in enumerate(SCORED_LABELS)}
 
 
 def majority_vote(labels: np.ndarray, window: int) -> np.ndarray:
-    """Centered majority vote over `window` frames, ignoring 'X'. Reproduces the upstream baseline."""
-    if window <= 1:
+    """Centered majority vote over +/- `window` frames (2*window+1 total), ignoring 'X'.
+
+    `window` is a half-width, same as upstream `starter/baseline.py`: window=50 is their
+    baseline_smooth50. Ties go to H, then A. 'X' where the window holds no vote.
+    """
+    if window <= 0:
         return labels.copy()
     n = len(labels)
     onehot = np.zeros((n, len(SCORED_LABELS)), dtype=np.int32)
     for lab, i in _IDX.items():
         onehot[labels == lab, i] = 1
     cs = np.vstack([np.zeros((1, onehot.shape[1]), dtype=np.int32), np.cumsum(onehot, axis=0)])
-    half = window // 2
-    lo = np.clip(np.arange(n) - half, 0, n)
-    hi = np.clip(np.arange(n) + half + 1, 0, n)
+    lo = np.clip(np.arange(n) - window, 0, n)
+    hi = np.clip(np.arange(n) + window + 1, 0, n)
     counts = cs[hi] - cs[lo]
     out = np.array(SCORED_LABELS, dtype="<U1")[counts.argmax(axis=1)]
     out[counts.sum(axis=1) == 0] = ABSTAIN

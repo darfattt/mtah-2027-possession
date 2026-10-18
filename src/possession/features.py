@@ -6,7 +6,10 @@ from __future__ import annotations
 
 import numpy as np
 
+from .config import PITCH_LENGTH_M, PITCH_WIDTH_M
 from .io import Tracking
+
+PITCH_M = (PITCH_LENGTH_M, PITCH_WIDTH_M)
 
 
 def ball_present(tr: Tracking) -> np.ndarray:
@@ -36,13 +39,17 @@ def interpolate_ball(tr: Tracking, max_gap: int = 25) -> np.ndarray:
     return ball
 
 
-def nearest_slot(tr: Tracking, ball: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
-    """For each frame: index of nearest tracked slot to the ball and its distance (normalised units).
+def nearest_slot(
+    tr: Tracking, ball: np.ndarray | None = None, pitch=PITCH_M
+) -> tuple[np.ndarray, np.ndarray]:
+    """For each frame: index of nearest tracked slot to the ball and its distance in metres.
 
+    Coordinates are normalised 0-1 on a non-square pitch, so both axes are scaled to metres
+    first; otherwise the short axis is stretched and the wrong player wins near the touchlines.
     Returns (slot (N,) int, -1 where undefined ; dist (N,) float, NaN where undefined).
     """
     ball = tr.ball if ball is None else ball
-    d = tr.xy - ball[:, None, :]  # (N, S, 2)
+    d = (tr.xy - ball[:, None, :]) * np.asarray(pitch)  # (N, S, 2) metres
     dist = np.sqrt((d**2).sum(axis=2))  # (N, S), NaN where slot or ball missing
     all_nan = np.isnan(dist).all(axis=1)
     dist_safe = np.where(np.isnan(dist), np.inf, dist)
@@ -77,7 +84,7 @@ def n_visible(tr: Tracking) -> np.ndarray:
     return (~np.isnan(tr.xy[:, :, 0])).sum(axis=1)
 
 
-def ball_speed(ball: np.ndarray, fps: int = 25, pitch=(105.3, 68.0)) -> np.ndarray:
+def ball_speed(ball: np.ndarray, fps: int = 25, pitch=PITCH_M) -> np.ndarray:
     """(N,) ball speed in m/s from consecutive frames, NaN where either frame missing."""
     xy_m = ball * np.array(pitch)
     v = np.full(len(ball), np.nan)

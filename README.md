@@ -61,7 +61,7 @@ Set `MTAH_DATA_DIR` if the data lives elsewhere; both this repo and the official
 ## Daily loop
 
 ```bash
-python scripts/run_baseline.py --window 50 --out submissions/baseline_w50.csv
+python scripts/run_baseline.py --window 50 --out submissions/baseline_w50.csv   # +/-50 frames = upstream baseline_smooth50
 python scripts/score.py                      # official scorer on the public 5-minute GT
 python upstream/evaluation/validate_submission.py submissions/baseline_w50.csv
 ```
@@ -78,7 +78,9 @@ Use it to check alignment and file validity only (see EVALUATION.md upstream).
 
 ## Approach roadmap
 
-1. **Baseline** — nearest tracked player to ball → team, majority vote over window (reproduces upstream ≈0.24).
+1. **Baseline** — nearest tracked player to ball (in metres) → team, majority vote over ±`window`
+   frames, `D` where the window never sees the ball. `--window 50` reproduces upstream ≈0.24.
+   `--window` is a half-width, the same convention as upstream `starter/baseline.py`.
 2. **Ball gap handling** — interpolate / Kalman short gaps; abstain (`X`) inside long gaps, never at transitions.
 3. **Dead-ball detection** — Smart Tagging `SET PIECES` + ball out-of-bounds + player-cluster stillness.
 4. **Transition model** — possession as a hidden state with a switch cost (Viterbi) instead of a per-frame vote.

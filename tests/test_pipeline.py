@@ -1,8 +1,10 @@
 import numpy as np
+import pandas as pd
 import pytest
 
 from possession import config
 from possession.features import ball_present, interpolate_ball, nearest_team
+from possession.io import Tracking, tracking_from_df
 from possession.smoothing import (
     fill_abstain,
     majority_vote,
@@ -42,9 +44,34 @@ def test_majority_vote_removes_flicker():
     assert (out == "H").all()
 
 
-def test_majority_vote_matches_raw_when_window_1():
+def test_majority_vote_matches_raw_when_window_0():
     lab = np.array(list("HHAADD"), dtype="<U1")
-    assert (majority_vote(lab, 1) == lab).all()
+    assert (majority_vote(lab, 0) == lab).all()
+
+
+def test_majority_vote_window_is_half_width():
+    # upstream convention: window=3 means +/- 3 frames, so one H reaches 3 frames each side
+    lab = np.array(list("XXXHXXXX"), dtype="<U1")
+    assert "".join(majority_vote(lab, 3)) == "HHHHHHHX"
+
+
+def test_nearest_team_measures_in_metres():
+    # normalised units put A closer (0.06 vs 0.08); in metres H is (5.4 m vs 6.3 m)
+    xy = np.array([[[0.50, 0.58], [0.56, 0.50]]])
+    tr = Tracking(ball=np.array([[0.5, 0.5]]), xy=xy, team=np.array(["H", "A"]),
+                  speed=np.zeros((1, 2)))
+    assert nearest_team(tr)[0] == "H"
+
+
+def test_tracking_from_df_keeps_team_aligned_when_slot_missing():
+    df = pd.DataFrame({
+        "frame_id": [1, 2], "ball_x": [0.5, 0.5], "ball_y": [0.5, 0.5],
+        "p1_x": [0.1, 0.1], "p1_y": [0.1, 0.1],
+        "p3_x": [0.9, 0.9], "p3_y": [0.9, 0.9],
+    })  # p2 is in the metadata but has no columns
+    tr = tracking_from_df(df, [("p1", "H"), ("p2", "H"), ("p3", "A")])
+    assert tr.xy.shape == (2, 2, 2)
+    assert list(tr.team) == ["H", "A"]
 
 
 def test_fill_abstain_mirrors_scorer():
@@ -101,3 +128,6 @@ def test_baseline_end_to_end(synthetic_tracking, monkeypatch):
     assert len(out) == 600
     assert (out[:300] == "H").all()
     assert (out[300:400] == "A").all()
+    # 60-frame gap 400-459 is not bridged; frames whose +/-25 window never sees the ball are D
+    assert (out[426:434] == "D").all()
+    assert "X" not in out

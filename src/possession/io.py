@@ -52,20 +52,25 @@ def load_tracking(source: str = "tactical") -> Tracking:
 
     p = asset_paths(source)
     ds = metrica.load_tracking_epts(meta_data=str(p["atd_meta"]), raw_data=str(p["atd_raw"]))
-    df = ds.to_df()
+    slots = [
+        (player.player_id, "H" if team.ground.name.lower() == "home" else "A")
+        for team in ds.metadata.teams
+        for player in team.players
+    ]
+    return tracking_from_df(ds.to_df(), slots, min_frames=N_FRAMES if source == "tactical" else 0)
 
+
+def tracking_from_df(df: pd.DataFrame, slots: list[tuple[str, str]], min_frames: int = 0) -> Tracking:
+    """kloppy to_df() + [(slot_id, 'H'|'A'), ...] in metadata order -> dense Tracking.
+
+    Slots without columns in df are dropped together with their team tag, so team stays
+    aligned with xy.
+    """
     frame_idx = df["frame_id"].to_numpy().astype(int) - 1
-    n = int(frame_idx.max()) + 1
-    n = max(n, N_FRAMES) if source == "tactical" else n
+    n = max(int(frame_idx.max()) + 1, min_frames)
 
-    # slot ids and team membership
-    slot_ids, slot_team = [], []
-    for team in ds.metadata.teams:
-        tag = "H" if team.ground.name.lower() == "home" else "A"
-        for player in team.players:
-            slot_ids.append(player.player_id)
-            slot_team.append(tag)
-    slot_ids = [s for s in slot_ids if f"{s}_x" in df.columns]
+    slots = [(sid, tag) for sid, tag in slots if f"{sid}_x" in df.columns]
+    slot_ids = [sid for sid, _ in slots]
     S = len(slot_ids)
 
     ball = np.full((n, 2), np.nan)
@@ -80,7 +85,7 @@ def load_tracking(source: str = "tactical") -> Tracking:
         if f"{sid}_s" in df.columns:
             speed[frame_idx, j] = df[f"{sid}_s"].to_numpy()
 
-    return Tracking(ball=ball, xy=xy, team=np.array(slot_team[:S]), speed=speed)
+    return Tracking(ball=ball, xy=xy, team=np.array([tag for _, tag in slots]), speed=speed)
 
 
 # ----------------------------------------------------------------- Smart Tagging
