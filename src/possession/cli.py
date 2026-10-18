@@ -17,7 +17,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     b = sub.add_parser("baseline", help="nearest-player + majority vote")
-    b.add_argument("--window", type=int, default=50)
+    b.add_argument("--window", type=int, default=50, help="vote half-width, +/- frames (upstream)")
     b.add_argument("--ball-gap-fill", type=int, default=0, help="bridge ball gaps up to N frames")
     b.add_argument("--out", type=Path, default=SUBMISSIONS_DIR / "baseline.csv")
 
