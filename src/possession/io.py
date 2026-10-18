@@ -105,8 +105,8 @@ def load_smart_tagging(path: Path | None = None) -> pd.DataFrame:
             "id": inst.findtext("ID"),
             "start_s": start,
             "end_s": end,
-            "start_frame": int(round(start * FPS)),
-            "end_frame": int(round(end * FPS)),
+            "start_frame": round(start * FPS),
+            "end_frame": round(end * FPS),
             "code": (inst.findtext("code") or "").strip(),
         }
         for lab in inst.iter("label"):
